@@ -1,21 +1,32 @@
-from rest_framework.permissions import BasePermission, SAFE_METHODS
+from rest_framework.permissions import BasePermission
 
-# isAdmin Permission
-class IsAdmin(BasePermission):
+class RolePermission(BasePermission):
+    role = None
     def has_permission(self, request, view):
-        return request.user.is_authenticated and request.user.role == 'admin'
+        return bool(request.user.is_authenticated and request.user.role == self.role)
 
+class IsAdmin(RolePermission):
+    role = 'admin'
 
+class IsStudent(RolePermission):
+    role = 'student'
 
-class IsInstructorOfCourse(BasePermission):
-    """
-    Allows access only if the user is the instructor of the course.
-    Expects view to have a method get_course() or a course_id in kwargs.
-    """
-    def has_permission(self, request, view):
-        if not request.user.is_authenticated or request.user.role != 'instructor':
-            return False
-        return True
+class IsInstructor(RolePermission):
+    role = 'instructor'
 
+class IsInstructorOfCourse(IsInstructor):
+    """Allows access only if the user is the instructor of the course."""
     def has_object_permission(self, request, view, obj):
-        return course.instructor == request.user
+        course = getattr(obj, 'course', obj)
+        return getattr(course, 'instructor', None) == request.user
+
+class IsEnrolledInCourse(IsStudent):
+    """Allows access if the student is enrolled in the course."""
+    def has_object_permission(self, request, view, obj):
+        if hasattr(obj, 'course'):
+            course = obj.course
+        elif hasattr(obj, 'module'):
+            course = obj.module.course
+        else:
+            return False
+        return course.enrolments.filter(student=request.user).exists()
