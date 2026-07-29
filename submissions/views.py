@@ -81,18 +81,20 @@ class SubmissionDetailView(APIView):
         # Only the student who owns it can update
         if request.user != submission.student:
             return Response({'detail': 'Not allowed'}, status=status.HTTP_403_FORBIDDEN)
-        serializer = SubmissionSerializer(submission, data=request.data)
+        serializer = SubmissionSerializer(submission, data=request.data, partial=True) if request.method == 'PATCH' else SubmissionSerializer(submission, data=request.data)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def patch(self, request, pk):
+        return self.put(request, pk)
 
     def delete(self, request, pk):
         submission = self.get_object(pk)
         if not submission:
             return Response({'detail': 'Not found'}, status=status.HTTP_404_NOT_FOUND)
         # Allow admin or the student
-        if self.check_permission_obj(request,submission):
-            submission.delete()
-            return Response(status=status.HTTP_204_NO_CONTENT)
-        return Response({'detail': 'Not allowed'}, status=status.HTTP_403_FORBIDDEN)
+        self.check_object_permissions(request, submission)
+        submission.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)

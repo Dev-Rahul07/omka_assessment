@@ -1,4 +1,4 @@
-from accounts.views import CustomLoginView,RegisterView
+from accounts.views import CustomLoginView, RegisterView, UserListCreateView
 from django.urls import path
 
 urlpatterns = [

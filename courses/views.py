@@ -3,8 +3,8 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from accounts.permissions import IsInstructor, IsInstructorOfCourse
-from course.models import Course, Module
-from course.serializers import CourseSerializer, ModuleSerializer
+from courses.models import Course, Module
+from courses.serializers import CourseSerializer, ModuleSerializer
 
 
 class CourseListCreateView(APIView):
@@ -52,11 +52,14 @@ class CourseDetailView(APIView):
         if not course:
             return Response({'detail': 'Not found'}, status=status.HTTP_404_NOT_FOUND)
         self.check_object_permissions(request, course)  
-        serializer = CourseSerializer(course, data=request.data)
+        serializer = CourseSerializer(course, data=request.data, partial=True) if request.method == 'PATCH' else CourseSerializer(course, data=request.data)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def patch(self, request, pk):
+        return self.put(request, pk)
 
     def delete(self, request, pk):
         course = self.get_object(pk)
@@ -115,16 +118,6 @@ class ModuleDetailView(APIView):
         module = self.get_object(pk)
         if not module:
             return Response({'detail': 'Not found'}, status=status.HTTP_404_NOT_FOUND)
-        # Check if student is enrolled or instructor owns course or admin
-        user = request.user
-        if user.role == 'admin':
-            pass
-        elif user.role == 'instructor' and module.course.instructor == user:
-            pass
-        elif user.role == 'student' and module.course.enrolments.filter(student=user).exists():
-            pass
-        else:
-            return Response({'detail': 'Not allowed'}, status=status.HTTP_403_FORBIDDEN)
         serializer = ModuleSerializer(module)
         return Response(serializer.data)
 
@@ -133,11 +126,14 @@ class ModuleDetailView(APIView):
         if not module:
             return Response({'detail': 'Not found'}, status=status.HTTP_404_NOT_FOUND)
         self.check_object_permissions(request, module)  # instructor check
-        serializer = ModuleSerializer(module, data=request.data)
+        serializer = ModuleSerializer(module, data=request.data, partial=True) if request.method == 'PATCH' else ModuleSerializer(module, data=request.data)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def patch(self, request, pk):
+        return self.put(request, pk)
 
     def delete(self, request, pk):
         module = self.get_object(pk)

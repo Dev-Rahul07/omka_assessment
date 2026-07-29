@@ -2,7 +2,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
-from accounts.permissions import IsStudent, IsAdmin, IsInstructor
+from accounts.permissions import IsStudent, IsAdmin, IsInstructor, IsAdminOrStudent
 from .models import Enrolment
 from courses.models import Course
 from .serializers import EnrolmentSerializer
@@ -43,8 +43,8 @@ class EnrolmentListCreateView(APIView):
 class EnrolmentDetailView(APIView):
     def get_permissions(self):
         # For delete, allow if admin or student themselves
-        if request.method == "DELETE":
-            return [IsAdmin,IsStudent]
+        if self.request.method == "DELETE":
+            return [IsAdminOrStudent()]
         return [IsAuthenticated()]
 
     def get_object(self, pk, user):
@@ -53,12 +53,29 @@ class EnrolmentDetailView(APIView):
         except Enrolment.DoesNotExist:
             return None
 
+    def get(self, request, pk):
+        enrolment = self.get_object(pk, request.user)
+        if not enrolment:
+            return Response({'detail': 'Not found'}, status=status.HTTP_404_NOT_FOUND)
+        
+        user = request.user
+        if user.role == 'admin':
+            pass
+        elif user.role == 'student' and enrolment.student == user:
+            pass
+        elif user.role == 'instructor' and enrolment.course.instructor == user:
+            pass
+        else:
+            return Response({'detail': 'Not allowed'}, status=status.HTTP_403_FORBIDDEN)
+            
+        serializer = EnrolmentSerializer(enrolment)
+        return Response(serializer.data)
+
     def delete(self, request, pk):
         enrolment = self.get_object(pk, request.user)
         if not enrolment:
             return Response({'detail': 'Not found'}, status=status.HTTP_404_NOT_FOUND)
         # Permissions: admin or the student himself
-        if self.check_object_permissions(request,enrolment):
-            enrolment.delete()
-            return Response(status=status.HTTP_204_NO_CONTENT)
-        return Response({'detail': 'Not allowed'}, status=status.HTTP_403_FORBIDDEN)
+        self.check_object_permissions(request, enrolment)
+        enrolment.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)

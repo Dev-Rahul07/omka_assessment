@@ -5,7 +5,7 @@ from courses.models import Module
 class Submission(models.Model):
     student = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='submissions')
     module = models.ForeignKey(Module, on_delete=models.CASCADE, related_name='submissions')
-    content = models.FileField(upload_to='submissions/')
+    content = models.TextField()
     submitted_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
