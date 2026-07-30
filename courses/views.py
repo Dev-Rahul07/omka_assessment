@@ -140,5 +140,7 @@ class ModuleDetailView(APIView):
         if not module:
             return Response({'detail': 'Not found'}, status=status.HTTP_404_NOT_FOUND)
         self.check_object_permissions(request, module)
+        if module.submissions.count()>0:
+            return Response("you cant delete this module..",status=status.HTTP_400_BAD_REQUEST)
         module.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
